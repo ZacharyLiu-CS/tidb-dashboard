@@ -1293,6 +1293,12 @@ export interface InfoInfoResponse {
     'ngm_state'?: string;
     /**
      * 
+     * @type {boolean}
+     * @memberof InfoInfoResponse
+     */
+    'no_tidb'?: boolean;
+    /**
+     * 
      * @type {Array<string>}
      * @memberof InfoInfoResponse
      */

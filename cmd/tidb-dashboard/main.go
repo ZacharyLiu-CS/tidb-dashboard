@@ -72,6 +72,7 @@ func NewCLIConfig() *DashboardCLIConfig {
 	flag.IntVar(&cfg.CoreConfig.NgmTimeout, "ngm-timeout", cfg.CoreConfig.NgmTimeout, "timeout secs for accessing the ngm API")
 	flag.BoolVar(&cfg.CoreConfig.EnableKeyVisualizer, "keyviz", true, "enable/disable key visualizer(default: true)")
 	flag.BoolVar(&cfg.CoreConfig.DisableCustomPromAddr, "disable-custom-prom-addr", false, "do not allow custom prometheus address")
+	flag.BoolVar(&cfg.CoreConfig.NoTiDB, "no-tidb", false, "enable no-TiDB mode (for tikv-slim clusters without TiDB instances)")
 
 	showVersion := flag.BoolP("version", "v", false, "print version information and exit")
 

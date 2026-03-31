@@ -24,3 +24,6 @@ export const useIsFeatureSupport = (feature: string) =>
   )
 
 export const useNgmState = () => store.useState((s) => s.appInfo?.ngm_state)
+
+export const useIsNoTiDB = () =>
+  store.useState((s) => Boolean(s.appInfo?.no_tidb))

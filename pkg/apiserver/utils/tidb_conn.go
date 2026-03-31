@@ -29,10 +29,11 @@ func MWConnectTiDB(tidbClient *tidb.Client) gin.HandlerFunc {
 		}
 
 		if !sessionUser.HasTiDBAuth {
-			// Only TiDBAuth is able to access. Raise error in this case.
-			// The error is privilege error instead of authorization error so that user will not be redirected.
-			rest.Error(c, rest.ErrForbidden.NewWithNoMessage())
-			c.Abort()
+			// In no-TiDB mode, user doesn't have TiDB auth.
+			// Skip TiDB connection but allow the request to continue.
+			// Individual handlers should check for nil TiDB connection.
+			c.Set(tiDBConnectionKey, (*gorm.DB)(nil))
+			c.Next()
 			return
 		}
 

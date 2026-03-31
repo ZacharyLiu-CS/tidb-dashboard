@@ -58,9 +58,12 @@ func RegisterRouter(r *gin.RouterGroup, auth *user.AuthService, s *Service) {
 	endpoint.Use(auth.MWAuthRequired())
 	endpoint.GET("/whoami", s.WhoamiHandler)
 
-	endpoint.Use(utils.MWConnectTiDB(s.params.TiDBClient))
-	endpoint.GET("/databases", s.databasesHandler)
-	endpoint.GET("/tables", s.tablesHandler)
+	// Skip TiDB-dependent routes in no-TiDB mode
+	if !s.params.Config.NoTiDB {
+		endpoint.Use(utils.MWConnectTiDB(s.params.TiDBClient))
+		endpoint.GET("/databases", s.databasesHandler)
+		endpoint.GET("/tables", s.tablesHandler)
+	}
 }
 
 type InfoResponse struct { // nolint
@@ -69,6 +72,7 @@ type InfoResponse struct { // nolint
 	EnableExperimental bool           `json:"enable_experimental"`
 	SupportedFeatures  []string       `json:"supported_features"`
 	NgmState           utils.NgmState `json:"ngm_state"`
+	NoTiDB             bool           `json:"no_tidb,omitempty"`
 }
 
 // @ID infoGet
@@ -107,6 +111,7 @@ func (s *Service) infoHandler(c *gin.Context) {
 		EnableExperimental: s.params.Config.EnableExperimental,
 		SupportedFeatures:  s.params.FeatureFlags.SupportedFeatures(),
 		NgmState:           ngmState,
+		NoTiDB:             s.params.Config.NoTiDB,
 	}
 	c.JSON(http.StatusOK, resp)
 }

@@ -13,7 +13,11 @@ import { useSpring, animated } from 'react-spring'
 import Banner from './Banner'
 import styles from './index.module.less'
 
-import { store, useIsFeatureSupport } from '@pingcap/tidb-dashboard-lib'
+import {
+  store,
+  useIsFeatureSupport,
+  useIsNoTiDB
+} from '@pingcap/tidb-dashboard-lib'
 
 function useAppMenuItem(
   registry,
@@ -124,8 +128,12 @@ function Sider({
   //   </Menu.SubMenu>
   // )
 
+  const noTiDB = useIsNoTiDB()
+  const supportTopSQL = useIsFeatureSupport('topsql')
+  const supportResourceManager = useIsFeatureSupport('resource_manager')
+
   const experimentalSubMenuItems = [
-    useAppMenuItem(registry, 'query_editor'),
+    useAppMenuItem(registry, 'query_editor', !noTiDB),
     useAppMenuItem(registry, 'configuration')
   ]
   const experimentalSubMenu = (
@@ -142,22 +150,28 @@ function Sider({
     </Menu.SubMenu>
   )
 
-  const supportTopSQL = useIsFeatureSupport('topsql')
-  const supportResourceManager = useIsFeatureSupport('resource_manager')
   const menuItems = [
     useAppMenuItem(registry, 'overview'),
     useAppMenuItem(registry, 'cluster_info'),
-    // topSQL
-    useAppMenuItem(registry, 'topsql', supportTopSQL),
-    useAppMenuItem(registry, 'statement'),
-    useAppMenuItem(registry, 'slow_query'),
+    // topSQL - requires TiDB
+    useAppMenuItem(registry, 'topsql', supportTopSQL && !noTiDB),
+    // statement - requires TiDB
+    useAppMenuItem(registry, 'statement', !noTiDB),
+    // slow_query - requires TiDB
+    useAppMenuItem(registry, 'slow_query', !noTiDB),
     useAppMenuItem(registry, 'keyviz'),
-    useAppMenuItem(registry, 'system_report'),
+    // system_report (diagnose) - requires TiDB
+    useAppMenuItem(registry, 'system_report', !noTiDB),
     // warning: "diagnose" app doesn't release yet
     // useAppMenuItem(registry, 'diagnose'),
     useAppMenuItem(registry, 'monitoring'),
     useAppMenuItem(registry, 'search_logs'),
-    useAppMenuItem(registry, 'resource_manager', supportResourceManager),
+    // resource_manager - requires TiDB
+    useAppMenuItem(
+      registry,
+      'resource_manager',
+      supportResourceManager && !noTiDB
+    ),
     // useAppMenuItem(registry, '__APP_NAME__'),
     // NOTE: Don't remove above comment line, it is a placeholder for code generator
     debugSubMenu

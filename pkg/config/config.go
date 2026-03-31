@@ -37,6 +37,11 @@ type Config struct {
 	FeatureVersion        string // assign the target TiDB version when running TiDB Dashboard as standalone mode
 
 	NgmTimeout int // in seconds
+
+	// NoTiDB indicates that the cluster has no TiDB instances (e.g., tikv-slim mode).
+	// When enabled, features requiring TiDB SQL connection will be disabled, and
+	// authentication will use a simplified mode that doesn't require TiDB.
+	NoTiDB bool
 }
 
 func Default() *Config {

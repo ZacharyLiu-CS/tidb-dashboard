@@ -3459,7 +3459,7 @@
                         "JwtAuth": []
                     }
                 ],
-                "summary": "Get availiable instances",
+                "summary": "Get available instances",
                 "parameters": [
                     {
                         "type": "string",
@@ -4671,6 +4671,9 @@
                 },
                 "ngm_state": {
                     "type": "string"
+                },
+                "no_tidb": {
+                    "type": "boolean"
                 },
                 "supported_features": {
                     "type": "array",

@@ -28,6 +28,7 @@ import (
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/topsql"
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/code"
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/code/codeauth"
+	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/noauth"
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/sqlauth"
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/sso"
 	"github.com/pingcap/tidb-dashboard/pkg/apiserver/user/sso/ssoauth"
@@ -155,6 +156,46 @@ var Modules = fx.Options(
 	resourcemanager.Module,
 )
 
+// NoTiDBModules provides the fx module set for clusters without TiDB instances.
+// It replaces sqlauth with noauth, and excludes TiDB-dependent modules like
+// statement, slowquery, queryeditor, diagnose, deadlock, resourcemanager, topsql, etc.
+var NoTiDBModules = fx.Options(
+	fx.Provide(
+		newAPIHandlerEngine,
+		newClients,
+		dbstore.NewDBStore,
+		httpc.NewHTTPClient,
+		pd.NewEtcdClient,
+		pd.NewPDClient,
+		tso.NewTSOClient,
+		scheduling.NewSchedulingClient,
+		config.NewDynamicConfigManager,
+		tidb.NewTiDBClient,
+		tikv.NewTiKVClient,
+		tiflash.NewTiFlashClient,
+		ticdc.NewTiCDCClient,
+		tiproxy.NewTiProxyClient,
+		utils.ProvideSysSchema,
+		apiutils.NewNgmProxy,
+		info.NewService,
+		clusterinfo.NewService,
+		logsearch.NewService,
+		keyvisual.NewService,
+		metrics.NewService,
+		configuration.NewService,
+	),
+	user.Module,
+	noauth.Module,   // Use noauth instead of sqlauth
+	codeauth.Module, // Keep code auth for sharing
+	ssoauth.Module,
+	code.Module,
+	sso.Module,
+	profiling.Module,
+	conprof.Module,
+	debugapi.Module,
+	visualplan.Module,
+)
+
 func (s *Service) Start(ctx context.Context) error {
 	if s.IsRunning() {
 		return nil
@@ -162,15 +203,25 @@ func (s *Service) Start(ctx context.Context) error {
 
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
-	s.app = fx.New(
-		fx.Logger(utils.NewFxPrinter()),
-		fx.Supply(featureflag.NewRegistry(s.config.FeatureVersion)),
-		Modules,
-		fx.Provide(
-			s.provideLocals,
-		),
-		fx.Populate(&s.apiHandlerEngine),
-		fx.Invoke(
+	var modules fx.Option
+	var invokeRouters fx.Option
+
+	if s.config.NoTiDB {
+		modules = NoTiDBModules
+		invokeRouters = fx.Invoke(
+			info.RegisterRouter,
+			clusterinfo.RegisterRouter,
+			profiling.RegisterRouter,
+			logsearch.RegisterRouter,
+			keyvisual.RegisterRouter,
+			metrics.RegisterRouter,
+			configuration.RegisterRouter,
+			// Must be at the end
+			s.status.Register,
+		)
+	} else {
+		modules = Modules
+		invokeRouters = fx.Invoke(
 			info.RegisterRouter,
 			clusterinfo.RegisterRouter,
 			profiling.RegisterRouter,
@@ -184,7 +235,18 @@ func (s *Service) Start(ctx context.Context) error {
 			// NOTE: Don't remove above comment line, it is a placeholder for code generator
 			// Must be at the end
 			s.status.Register,
+		)
+	}
+
+	s.app = fx.New(
+		fx.Logger(utils.NewFxPrinter()),
+		fx.Supply(featureflag.NewRegistry(s.config.FeatureVersion)),
+		modules,
+		fx.Provide(
+			s.provideLocals,
 		),
+		fx.Populate(&s.apiHandlerEngine),
+		invokeRouters,
 	)
 
 	if err := s.app.Start(s.ctx); err != nil {
